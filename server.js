@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -18,7 +19,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Fix: Serve static files from the correct directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Enhanced data structures
 const connectedUsers = new Map();
@@ -26,8 +29,11 @@ const conversationHistory = [];
 const prompts = [];
 let clearVoteSession = null;
 const typingUsers = new Set();
+let promptVotingSession = null;
 const MAX_HISTORY = 150;
 const MAX_PROMPTS = 20;
+const USER_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const PROMPT_VOTING_TIME = 60 * 1000; // 60 seconds
 
 // AI Configuration with fallback
 const AI_CONFIG = {
@@ -45,7 +51,7 @@ const AI_CONFIG = {
             'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
             'Content-Type': 'application/json'
         },
-        model: 'grok-3-latest'
+        model: 'grok-beta'
     },
     claude: {
         url: 'https://api.anthropic.com/v1/messages',
@@ -103,15 +109,29 @@ io.on('connection', (socket) => {
             id: socket.id,
             username: sanitizedUsername,
             joinedAt: new Date(),
-            isActive: true
+            isActive: true,
+            lastActivity: new Date(),
+            timeoutTimer: null
         };
 
         connectedUsers.set(socket.id, userData);
+        
+        // Set up user timeout
+        setupUserTimeout(socket.id);
         
         // Send initial data
         socket.emit('join_success');
         socket.emit('conversation_history', conversationHistory);
         socket.emit('prompts_list', serializePrompts());
+        
+        // Send current prompt voting session if active
+        if (promptVotingSession) {
+            socket.emit('prompt_voting_active', {
+                timeRemaining: Math.max(0, promptVotingSession.endTime - Date.now()),
+                prompts: serializePrompts(),
+                requiredVotes: getRequiredVotes()
+            });
+        }
         
         // Notify all users
         const joinMessage = {
@@ -131,53 +151,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('user_message', async (data) => {
-        const user = connectedUsers.get(socket.id);
-        if (!user || !data.message) return;
+        // Users can no longer send direct messages to AI
+        // All AI interactions must go through community prompts
+        socket.emit('message_blocked', 'Direct messages to AI are not allowed. Please submit a community prompt instead.');
+    });
 
-        const sanitizedMessage = sanitizeMessage(data.message);
-        if (!sanitizedMessage) return;
-
-        const messageData = {
-            id: `user_${Date.now()}_${socket.id}`,
-            type: 'user',
-            username: user.username,
-            content: sanitizedMessage,
-            timestamp: new Date()
-        };
-
-        conversationHistory.push(messageData);
-        manageHistoryLimit();
-        io.emit('new_message', messageData);
-
-        // Generate AI response
-        try {
-            io.emit('ai_typing', true);
-            const aiResponse = await generateAIResponse(sanitizedMessage, conversationHistory);
-            
-            const aiMessageData = {
-                id: `ai_${Date.now()}`,
-                type: 'ai',
-                username: 'AI Assistant',
-                content: aiResponse.content,
-                tokensUsed: aiResponse.usage?.total_tokens || 0,
-                timestamp: new Date()
-            };
-
-            conversationHistory.push(aiMessageData);
-            manageHistoryLimit();
-            
-            io.emit('ai_typing', false);
-            io.emit('new_message', aiMessageData);
-        } catch (error) {
-            console.error('AI Response Error:', error);
-            io.emit('ai_typing', false);
-            io.emit('ai_error', 'Sorry, I encountered an error processing your message. Please try again.');
-        }
+    socket.on('user_activity', () => {
+        updateUserActivity(socket.id);
     });
 
     socket.on('typing', () => {
         const user = connectedUsers.get(socket.id);
         if (user) {
+            updateUserActivity(socket.id);
             typingUsers.add(socket.id);
             socket.broadcast.emit('user_typing', {
                 count: typingUsers.size,
@@ -197,6 +183,8 @@ io.on('connection', (socket) => {
     socket.on('submit_prompt', (text) => {
         const user = connectedUsers.get(socket.id);
         if (!user || !text || typeof text !== 'string') return;
+
+        updateUserActivity(socket.id);
 
         const sanitizedText = text.trim().substring(0, 500);
         if (!sanitizedText) return;
@@ -224,8 +212,14 @@ io.on('connection', (socket) => {
         prompts.push(prompt);
         managePromptsLimit();
         
+        // Start voting session if this is the first prompt
+        if (!promptVotingSession) {
+            startPromptVoting();
+        }
+        
         io.emit('new_prompt', serializePrompt(prompt));
         io.emit('prompts_list', serializePrompts());
+        updateVotingStatus();
     });
 
     socket.on('vote_prompt', (promptId) => {
@@ -236,6 +230,8 @@ io.on('connection', (socket) => {
             socket.emit('vote_error', 'Prompt not found.');
             return;
         }
+
+        updateUserActivity(socket.id);
 
         if (prompt.submitterId === socket.id) {
             socket.emit('vote_error', 'You cannot vote for your own prompt.');
@@ -249,9 +245,10 @@ io.on('connection', (socket) => {
 
         prompt.votes.add(socket.id);
         io.emit('prompts_list', serializePrompts());
+        updateVotingStatus();
         
         // Check if prompt should be selected (majority vote)
-        const requiredVotes = Math.max(2, Math.ceil(connectedUsers.size * 0.6));
+        const requiredVotes = getRequiredVotes();
         if (prompt.votes.size >= requiredVotes) {
             selectPrompt(prompt);
         }
@@ -404,6 +401,12 @@ async function generateClaudeResponse(userMessage, recentHistory, config) {
 
 // Prompt management
 async function selectPrompt(prompt) {
+    // Clear the voting session
+    if (promptVotingSession) {
+        clearTimeout(promptVotingSession.timer);
+        promptVotingSession = null;
+    }
+
     const systemMessage = {
         id: `system_${Date.now()}`,
         type: 'system',
@@ -437,6 +440,7 @@ async function selectPrompt(prompt) {
         // Clear prompts after selection
         prompts.length = 0;
         io.emit('prompts_list', []);
+        io.emit('prompt_voting_end');
         
     } catch (error) {
         console.error('Error processing selected prompt:', error);
@@ -510,10 +514,114 @@ function endClearVote(result = 'timeout') {
     }
 }
 
-// User disconnect handling
+// User timeout management
+function setupUserTimeout(socketId) {
+    const user = connectedUsers.get(socketId);
+    if (!user) return;
+
+    clearTimeout(user.timeoutTimer);
+    user.timeoutTimer = setTimeout(() => {
+        timeoutUser(socketId);
+    }, USER_TIMEOUT);
+}
+
+function updateUserActivity(socketId) {
+    const user = connectedUsers.get(socketId);
+    if (user) {
+        user.lastActivity = new Date();
+        setupUserTimeout(socketId);
+    }
+}
+
+function timeoutUser(socketId) {
+    const user = connectedUsers.get(socketId);
+    if (user) {
+        const socket = io.sockets.sockets.get(socketId);
+        if (socket) {
+            socket.emit('user_timeout', 'You have been disconnected due to inactivity.');
+            socket.disconnect(true);
+        }
+    }
+}
+
+// Prompt voting system
+function startPromptVoting() {
+    if (promptVotingSession) return;
+
+    promptVotingSession = {
+        id: Date.now(),
+        startTime: Date.now(),
+        endTime: Date.now() + PROMPT_VOTING_TIME,
+        timer: setTimeout(endPromptVoting, PROMPT_VOTING_TIME)
+    };
+
+    io.emit('prompt_voting_start', {
+        timeRemaining: PROMPT_VOTING_TIME,
+        requiredVotes: getRequiredVotes()
+    });
+
+    // Update clients every second with remaining time
+    const updateTimer = setInterval(() => {
+        if (!promptVotingSession) {
+            clearInterval(updateTimer);
+            return;
+        }
+
+        const timeRemaining = Math.max(0, promptVotingSession.endTime - Date.now());
+        io.emit('prompt_voting_update', {
+            timeRemaining,
+            requiredVotes: getRequiredVotes()
+        });
+
+        if (timeRemaining <= 0) {
+            clearInterval(updateTimer);
+        }
+    }, 1000);
+}
+
+function endPromptVoting() {
+    if (!promptVotingSession) return;
+
+    clearTimeout(promptVotingSession.timer);
+    promptVotingSession = null;
+
+    // Select the prompt with the most votes
+    if (prompts.length > 0) {
+        const maxVotes = Math.max(...prompts.map(p => p.votes.size));
+        if (maxVotes > 0) {
+            const topPrompt = prompts.find(p => p.votes.size === maxVotes);
+            selectPrompt(topPrompt);
+        } else {
+            // No votes, clear prompts and notify
+            prompts.length = 0;
+            io.emit('prompts_list', []);
+            io.emit('prompt_voting_end', 'No votes received. Prompts cleared.');
+        }
+    }
+
+    io.emit('prompt_voting_end');
+}
+
+function getRequiredVotes() {
+    return Math.ceil(connectedUsers.size / 2); // 50% of users
+}
+
+function updateVotingStatus() {
+    if (promptVotingSession) {
+        io.emit('voting_status_update', {
+            requiredVotes: getRequiredVotes(),
+            totalUsers: connectedUsers.size,
+            prompts: serializePrompts()
+        });
+    }
+}
+
 function handleUserDisconnect(socketId) {
     const user = connectedUsers.get(socketId);
     if (user) {
+        // Clear timeout timer
+        clearTimeout(user.timeoutTimer);
+        
         // Remove user from all collections
         connectedUsers.delete(socketId);
         typingUsers.delete(socketId);
@@ -532,6 +640,11 @@ function handleUserDisconnect(socketId) {
             if (connectedUsers.size === 0) {
                 endClearVote('cancelled');
             }
+        }
+        
+        // Update voting status if voting is active
+        if (promptVotingSession) {
+            updateVotingStatus();
         }
         
         // Add leave message
