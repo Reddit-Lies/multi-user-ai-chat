@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-User AI Chat</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jdenticon@3.1.1/dist/jdenticon.min.js"></script>
+    <script type="module">
+      import 'https://cdn.jsdelivr.net/npm/emoji-picker-element@1.10.0/index.js';
+    </script>
     <style>
         * {
             margin: 0;
@@ -134,7 +138,8 @@
 
         .message {
             display: flex;
-            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
             max-width: 80%;
             animation: slideIn 0.3s ease;
         }
@@ -152,6 +157,7 @@
 
         .message.user {
             align-self: flex-end;
+            flex-direction: row-reverse;
         }
 
         .message.ai {
@@ -163,10 +169,38 @@
             max-width: 100%;
         }
 
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .message.user .message-avatar {
+            margin-left: 10px;
+        }
+
+        .message.ai .message-avatar {
+            margin-right: 10px;
+        }
+
+        .message-body {
+            flex: 1;
+        }
+
         .message-header {
             font-size: 0.8rem;
             margin-bottom: 5px;
             opacity: 0.7;
+        }
+
+        .message-header .username {
+            font-weight: bold;
+        }
+
+        .message-header .timestamp {
+            color: #9ca3af;
+            font-size: 0.75rem;
         }
 
         .message.user .message-header {
@@ -242,6 +276,14 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
+        .emoji-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+
         .send-btn {
             padding: 12px 20px;
             background: linear-gradient(135deg, #4f46e5, #7c3aed);
@@ -315,16 +357,35 @@
                 height: 100vh;
                 border-radius: 0;
             }
-            
             .online-users {
                 position: static;
                 transform: none;
                 justify-content: center;
                 margin-top: 10px;
             }
-            
             .header h1 {
                 font-size: 1.2rem;
+            }
+            .messages {
+                max-height: calc(100vh - 200px);
+            }
+            .input-area {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #f9fafb;
+                padding: 10px;
+            }
+            .message-input {
+                width: 100%;
+            }
+            .send-btn, .emoji-btn {
+                min-width: 50px;
+            }
+            .message-avatar {
+                width: 24px;
+                height: 24px;
             }
         }
     </style>
@@ -367,6 +428,7 @@
                         placeholder="Type your message to the AI..." 
                         rows="1"
                     ></textarea>
+                    <button type="button" id="emojiBtn" class="emoji-btn">😊</button>
                     <button type="submit" class="send-btn" id="sendBtn">Send</button>
                 </form>
             </div>
@@ -416,6 +478,28 @@
 
                 this.messageInput.addEventListener('input', () => {
                     this.adjustTextareaHeight();
+                });
+
+                const emojiBtn = document.getElementById('emojiBtn');
+                let picker = null;
+                emojiBtn.addEventListener('click', () => {
+                    if (!picker) {
+                        picker = document.createElement('emoji-picker');
+                        picker.addEventListener('emoji-click', (event) => {
+                            const emoji = event.detail.unicode;
+                            const input = this.messageInput;
+                            const start = input.selectionStart;
+                            const end = input.selectionEnd;
+                            input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+                            input.selectionStart = input.selectionEnd = start + emoji.length;
+                            input.focus();
+                        });
+                        document.body.appendChild(picker);
+                        picker.style.position = 'absolute';
+                        picker.style.bottom = '100px';
+                        picker.style.right = '20px';
+                    }
+                    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
                 });
             }
 
@@ -507,17 +591,31 @@
                 if (!animate) messageDiv.style.animation = 'none';
                 
                 const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const headerText = type === 'system' ? 'System' : `${sender} • ${timestamp}`;
+                const headerText = type === 'system' ? 'System' : `<span class="username">${sender}</span> <span class="timestamp">• ${timestamp}</span>`;
                 
-                messageDiv.innerHTML = `
+                if (type !== 'system') {
+                    const avatarDiv = document.createElement('div');
+                    avatarDiv.className = 'message-avatar';
+                    const avatarCanvas = document.createElement('canvas');
+                    avatarCanvas.width = 32;
+                    avatarCanvas.height = 32;
+                    const avatarHash = type === 'ai' ? 'AI' : sender;
+                    jdenticon.update(avatarCanvas, avatarHash);
+                    avatarDiv.appendChild(avatarCanvas);
+                    messageDiv.appendChild(avatarDiv);
+                }
+                
+                const bodyDiv = document.createElement('div');
+                bodyDiv.className = 'message-body';
+                bodyDiv.innerHTML = `
                     <div class="message-header">${headerText}</div>
                     <div class="message-content">${this.escapeHtml(content)}</div>
                 `;
                 
+                messageDiv.appendChild(bodyDiv);
                 this.messages.appendChild(messageDiv);
                 this.scrollToBottom();
                 
-                // Re-enable send button if this was an AI response
                 if (type === 'ai') {
                     this.sendBtn.disabled = false;
                 }
@@ -558,7 +656,6 @@
             }
         }
 
-        // Initialize the chat application
         const chatApp = new ChatApp();
     </script>
 </body>
