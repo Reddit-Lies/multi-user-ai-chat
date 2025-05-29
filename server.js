@@ -44,7 +44,7 @@ const AI_CONFIG = {
             'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
             'Content-Type': 'application/json'
         },
-        model: 'grok-beta'
+        model: 'grok-3-latest'
     }
 };
 
