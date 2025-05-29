@@ -27,7 +27,7 @@
 
         .chat-container {
             width: 95%;
-            max-width: 800px;
+            max-width: 1200px;
             height: 90vh;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -42,20 +42,22 @@
             background: linear-gradient(135deg, #4f46e5, #7c3aed);
             color: white;
             padding: 20px;
-            text-align: center;
-            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .header h1 {
             font-size: 1.5rem;
-            margin-bottom: 5px;
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
 
         .online-users {
-            position: absolute;
-            top: 50%;
-            right: 20px;
-            transform: translateY(-50%);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -74,6 +76,118 @@
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
+        }
+
+        .token-usage {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .clear-chat-btn {
+            padding: 8px 16px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-chat-btn:hover {
+            background: #b91c1c;
+            transform: translateY(-2px);
+        }
+
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .prompt-area {
+            width: 300px;
+            background: #f9fafb;
+            border-left: 1px solid #e5e7eb;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .prompt-area h3 {
+            margin-bottom: 15px;
+            color: #374151;
+        }
+
+        .prompt-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .submit-prompt-btn {
+            width: 100%;
+            padding: 10px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .submit-prompt-btn:hover {
+            background: #3b3ab8;
+        }
+
+        .prompt {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .prompt p {
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .prompt small {
+            display: block;
+            margin-bottom: 8px;
+            color: #6b7280;
+        }
+
+        .prompt-votes {
+            margin-bottom: 8px;
+            color: #4f46e5;
+        }
+
+        .vote-btn {
+            padding: 6px 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .vote-btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
         }
 
         .username-setup {
@@ -118,13 +232,6 @@
             box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
         }
 
-        #chatArea {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            overflow: hidden;
-        }
-
         .messages {
             flex: 1;
             padding: 20px;
@@ -145,14 +252,8 @@
         }
 
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .message.user {
@@ -160,13 +261,8 @@
             flex-direction: row-reverse;
         }
 
-        .message.ai {
+        .message.ai, .message.system {
             align-self: flex-start;
-        }
-
-        .message.system {
-            align-self: center;
-            max-width: 100%;
         }
 
         .message-avatar {
@@ -174,14 +270,6 @@
             height: 32px;
             border-radius: 50%;
             overflow: hidden;
-        }
-
-        .message.user .message-avatar {
-            margin-left: 10px;
-        }
-
-        .message.ai .message-avatar {
-            margin-right: 10px;
         }
 
         .message-body {
@@ -213,7 +301,6 @@
         }
 
         .message.system .message-header {
-            text-align: center;
             color: #6b7280;
         }
 
@@ -241,8 +328,43 @@
             background: #fef3c7;
             color: #92400e;
             border-radius: 12px;
-            text-align: center;
             font-style: italic;
+        }
+
+        .user-typing-indicator {
+            padding: 10px 20px;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-style: italic;
+            margin: 10px 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #6b7280;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
         }
 
         .input-area {
@@ -306,42 +428,6 @@
             cursor: not-allowed;
         }
 
-        .typing-indicator {
-            display: none;
-            align-items: center;
-            gap: 8px;
-            color: #6b7280;
-            font-style: italic;
-            margin: 10px 20px;
-        }
-
-        .typing-dots {
-            display: flex;
-            gap: 4px;
-        }
-
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            background: #6b7280;
-            border-radius: 50%;
-            animation: typing 1.4s infinite ease-in-out;
-        }
-
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-
-        @keyframes typing {
-            0%, 80%, 100% {
-                transform: scale(0);
-                opacity: 0.5;
-            }
-            40% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
         .error-message {
             background: #fee2e2;
             color: #dc2626;
@@ -357,35 +443,31 @@
                 height: 100vh;
                 border-radius: 0;
             }
-            .online-users {
-                position: static;
-                transform: none;
-                justify-content: center;
-                margin-top: 10px;
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
             }
-            .header h1 {
-                font-size: 1.2rem;
+            .header-info {
+                margin-top: 10px;
+                flex-wrap: wrap;
+            }
+            .content {
+                flex-direction: column;
+            }
+            .prompt-area {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid #e5e7eb;
             }
             .messages {
-                max-height: calc(100vh - 200px);
+                max-height: calc(100vh - 300px);
             }
             .input-area {
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                background: #f9fafb;
                 padding: 10px;
-            }
-            .message-input {
-                width: 100%;
-            }
-            .send-btn, .emoji-btn {
-                min-width: 50px;
-            }
-            .message-avatar {
-                width: 24px;
-                height: 24px;
             }
         }
     </style>
@@ -394,9 +476,13 @@
     <div class="chat-container">
         <div class="header">
             <h1>🤖 Multi-User AI Chat</h1>
-            <div class="online-users">
-                <div class="online-dot"></div>
-                <span id="userCount">0 users online</span>
+            <div class="header-info">
+                <div class="online-users">
+                    <div class="online-dot"></div>
+                    <span id="userCount">0 users online</span>
+                </div>
+                <span class="token-usage" id="tokenUsage">Tokens used: 0</span>
+                <button id="clearChatBtn" class="clear-chat-btn">Clear Chat</button>
             </div>
         </div>
 
@@ -408,29 +494,37 @@
             </div>
         </div>
 
-        <div id="chatArea" style="display: none; flex: 1; display: flex; flex-direction: column;">
-            <div class="messages" id="messages"></div>
-            
-            <div class="typing-indicator" id="typingIndicator">
-                <span>AI is thinking</span>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+        <div class="content" style="display: none;">
+            <div class="chat-area">
+                <div class="messages" id="messages"></div>
+                <div class="user-typing-indicator" id="userTypingIndicator"></div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <span>AI is thinking</span>
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <form class="input-form" id="messageForm">
+                        <textarea 
+                            id="messageInput" 
+                            class="message-input" 
+                            placeholder="Type your message to the AI..." 
+                            rows="1"
+                        ></textarea>
+                        <button type="button" id="emojiBtn" class="emoji-btn">😊</button>
+                        <button type="submit" class="send-btn" id="sendBtn">Send</button>
+                    </form>
                 </div>
             </div>
-
-            <div class="input-area">
-                <form class="input-form" id="messageForm">
-                    <textarea 
-                        id="messageInput" 
-                        class="message-input" 
-                        placeholder="Type your message to the AI..." 
-                        rows="1"
-                    ></textarea>
-                    <button type="button" id="emojiBtn" class="emoji-btn">😊</button>
-                    <button type="submit" class="send-btn" id="sendBtn">Send</button>
-                </form>
+            <div class="prompt-area" id="promptArea">
+                <h3>Submit a Prompt</h3>
+                <input type="text" id="promptInput" class="prompt-input" placeholder="Enter a prompt for the AI">
+                <button id="submitPromptBtn" class="submit-prompt-btn">Submit</button>
+                <h3>Current Prompts</h3>
+                <div id="promptList"></div>
             </div>
         </div>
     </div>
@@ -441,21 +535,31 @@
                 this.socket = null;
                 this.username = '';
                 this.isConnected = false;
+                this.totalTokens = 0;
+                this.votedPrompts = new Set();
+                this.isTyping = false;
                 this.initializeElements();
                 this.setupEventListeners();
             }
 
             initializeElements() {
                 this.usernameSetup = document.getElementById('usernameSetup');
-                this.chatArea = document.getElementById('chatArea');
-                this.usernameInput = document.getElementById('usernameInput');
-                this.joinBtn = document.getElementById('joinBtn');
+                this.content = document.querySelector('.content');
+                this.chatArea = document.querySelector('.chat-area');
                 this.messages = document.getElementById('messages');
                 this.messageInput = document.getElementById('messageInput');
                 this.messageForm = document.getElementById('messageForm');
                 this.sendBtn = document.getElementById('sendBtn');
                 this.userCount = document.getElementById('userCount');
                 this.typingIndicator = document.getElementById('typingIndicator');
+                this.userTypingIndicator = document.getElementById('userTypingIndicator');
+                this.tokenUsage = document.getElementById('tokenUsage');
+                this.usernameInput = document.getElementById('usernameInput');
+                this.joinBtn = document.getElementById('joinBtn');
+                this.promptInput = document.getElementById('promptInput');
+                this.submitPromptBtn = document.getElementById('submitPromptBtn');
+                this.promptList = document.getElementById('promptList');
+                this.clearChatBtn = document.getElementById('clearChatBtn');
             }
 
             setupEventListeners() {
@@ -469,6 +573,19 @@
                     this.sendMessage();
                 });
 
+                this.messageInput.addEventListener('input', () => {
+                    this.adjustTextareaHeight();
+                    if (!this.isTyping) {
+                        this.isTyping = true;
+                        this.socket.emit('typing');
+                    }
+                    clearTimeout(this.typingTimer);
+                    this.typingTimer = setTimeout(() => {
+                        this.isTyping = false;
+                        this.socket.emit('stop_typing');
+                    }, 3000);
+                });
+
                 this.messageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -476,9 +593,18 @@
                     }
                 });
 
-                this.messageInput.addEventListener('input', () => {
-                    this.adjustTextareaHeight();
+                this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
+                this.promptInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.submitPrompt();
                 });
+
+                this.promptList.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('vote-btn')) {
+                        this.votePrompt(e.target.dataset.promptId);
+                    }
+                });
+
+                this.clearChatBtn.addEventListener('click', () => this.proposeClearChat());
 
                 const emojiBtn = document.getElementById('emojiBtn');
                 let picker = null;
@@ -487,12 +613,11 @@
                         picker = document.createElement('emoji-picker');
                         picker.addEventListener('emoji-click', (event) => {
                             const emoji = event.detail.unicode;
-                            const input = this.messageInput;
-                            const start = input.selectionStart;
-                            const end = input.selectionEnd;
-                            input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
-                            input.selectionStart = input.selectionEnd = start + emoji.length;
-                            input.focus();
+                            const start = this.messageInput.selectionStart;
+                            const end = this.messageInput.selectionEnd;
+                            this.messageInput.value = this.messageInput.value.substring(0, start) + emoji + this.messageInput.value.substring(end);
+                            this.messageInput.selectionStart = this.messageInput.selectionEnd = start + emoji.length;
+                            this.messageInput.focus();
                         });
                         document.body.appendChild(picker);
                         picker.style.position = 'absolute';
@@ -514,36 +639,32 @@
                     this.showError('Please enter a username');
                     return;
                 }
-
                 this.username = username;
                 this.connectToServer();
             }
 
             connectToServer() {
                 this.socket = io();
-                
                 this.socket.on('connect', () => {
-                    console.log('Connected to server');
                     this.isConnected = true;
                     this.socket.emit('join', this.username);
                     this.usernameSetup.style.display = 'none';
-                    this.chatArea.style.display = 'flex';
+                    this.content.style.display = 'flex';
                 });
 
                 this.socket.on('disconnect', () => {
-                    console.log('Disconnected from server');
                     this.isConnected = false;
                     this.showError('Lost connection to server. Refresh to reconnect.');
                 });
 
                 this.socket.on('conversation_history', (history) => {
                     history.forEach(msg => {
-                        this.addMessage(msg.type, msg.username, msg.content, false);
+                        this.addMessage(msg.type, msg.username, msg.content, msg.tokensUsed || 0, false);
                     });
                 });
 
                 this.socket.on('new_message', (messageData) => {
-                    this.addMessage(messageData.type, messageData.username, messageData.content);
+                    this.addMessage(messageData.type, messageData.username, messageData.content, messageData.tokensUsed || 0);
                 });
 
                 this.socket.on('user_joined', (data) => {
@@ -564,13 +685,30 @@
                     this.typingIndicator.style.display = isTyping ? 'flex' : 'none';
                 });
 
+                this.socket.on('user_typing', (count) => {
+                    this.userTypingIndicator.textContent = count > 0 ? `${count} users are typing...` : '';
+                });
+
+                this.socket.on('prompts_list', (prompts) => {
+                    this.renderPrompts(prompts);
+                });
+
+                this.socket.on('new_prompt', (prompt) => {
+                    this.addPrompt(prompt);
+                });
+
+                this.socket.on('clear_chat', () => {
+                    this.messages.innerHTML = '';
+                    this.totalTokens = 0;
+                    this.updateTokenUsage();
+                });
+
                 this.socket.on('ai_error', (error) => {
                     this.addMessage('system', 'System', `Error: ${error}`);
                     this.sendBtn.disabled = false;
                 });
 
-                this.socket.on('connect_error', (error) => {
-                    console.error('Connection error:', error);
+                this.socket.on('connect_error', () => {
                     this.showError('Failed to connect to server. Please try again.');
                 });
             }
@@ -578,19 +716,41 @@
             sendMessage() {
                 const message = this.messageInput.value.trim();
                 if (!message || !this.isConnected) return;
-
                 this.socket.emit('user_message', { message });
+                this.socket.emit('stop_typing');
                 this.messageInput.value = '';
                 this.adjustTextareaHeight();
                 this.sendBtn.disabled = true;
             }
 
-            addMessage(type, sender, content, animate = true) {
+            submitPrompt() {
+                const promptText = this.promptInput.value.trim();
+                if (promptText && this.isConnected) {
+                    this.socket.emit('submit_prompt', promptText);
+                    this.promptInput.value = '';
+                }
+            }
+
+            votePrompt(promptId) {
+                if (!this.votedPrompts.has(promptId) && this.isConnected) {
+                    this.socket.emit('vote_prompt', promptId);
+                    this.votedPrompts.add(promptId);
+                    const btn = this.promptList.querySelector(`[data-prompt-id="${promptId}"]`);
+                    if (btn) btn.disabled = true;
+                }
+            }
+
+            proposeClearChat() {
+                if (this.isConnected) {
+                    this.socket.emit('propose_clear');
+                }
+            }
+
+            addMessage(type, sender, content, tokensUsed = 0, animate = true) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${type}`;
                 if (!animate) messageDiv.style.animation = 'none';
-                
-                const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const headerText = type === 'system' ? 'System' : `<span class="username">${sender}</span> <span class="timestamp">• ${timestamp}</span>`;
                 
                 if (type !== 'system') {
@@ -599,37 +759,31 @@
                     const avatarCanvas = document.createElement('canvas');
                     avatarCanvas.width = 32;
                     avatarCanvas.height = 32;
-                    const avatarHash = type === 'ai' ? 'AI' : sender;
-                    jdenticon.update(avatarCanvas, avatarHash);
+                    jdenticon.update(avatarCanvas, type === 'ai' ? 'AI' : sender);
                     avatarDiv.appendChild(avatarCanvas);
                     messageDiv.appendChild(avatarDiv);
                 }
-                
+
                 const bodyDiv = document.createElement('div');
                 bodyDiv.className = 'message-body';
                 bodyDiv.innerHTML = `
                     <div class="message-header">${headerText}</div>
                     <div class="message-content">${this.escapeHtml(content)}</div>
                 `;
-                
                 messageDiv.appendChild(bodyDiv);
                 this.messages.appendChild(messageDiv);
-                this.scrollToBottom();
-                
+
                 if (type === 'ai') {
+                    this.totalTokens += tokensUsed;
+                    this.updateTokenUsage();
                     this.sendBtn.disabled = false;
                 }
-            }
-
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
+                this.scrollToBottom();
             }
 
             scrollToBottom() {
-                const isScrolledToBottom = this.messages.scrollHeight - this.messages.clientHeight <= this.messages.scrollTop + 50;
-                if (isScrolledToBottom) {
+                const isAtBottom = this.messages.scrollHeight - this.messages.scrollTop <= this.messages.clientHeight + 50;
+                if (isAtBottom) {
                     this.messages.scrollTop = this.messages.scrollHeight;
                 }
             }
@@ -638,21 +792,51 @@
                 this.userCount.textContent = `${count} user${count !== 1 ? 's' : ''} online`;
             }
 
+            updateTokenUsage() {
+                this.tokenUsage.textContent = `Tokens used: ${this.totalTokens}`;
+            }
+
+            renderPrompts(prompts) {
+                this.promptList.innerHTML = '';
+                prompts.forEach(prompt => {
+                    const promptDiv = document.createElement('div');
+                    promptDiv.className = 'prompt';
+                    promptDiv.innerHTML = `
+                        <p>${this.escapeHtml(prompt.text)}</p>
+                        <small>Submitted by ${prompt.submitter}</small>
+                        <div class="prompt-votes">Votes: ${prompt.votes.size}</div>
+                        <button class="vote-btn" data-prompt-id="${prompt.id}" ${this.votedPrompts.has(prompt.id) ? 'disabled' : ''}>Vote</button>
+                    `;
+                    this.promptList.appendChild(promptDiv);
+                });
+            }
+
+            addPrompt(prompt) {
+                const promptDiv = document.createElement('div');
+                promptDiv.className = 'prompt';
+                promptDiv.innerHTML = `
+                    <p>${this.escapeHtml(prompt.text)}</p>
+                    <small>Submitted by ${prompt.submitter}</small>
+                    <div class="prompt-votes">Votes: 0</div>
+                    <button class="vote-btn" data-prompt-id="${prompt.id}">Vote</button>
+                `;
+                this.promptList.appendChild(promptDiv);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
             showError(message) {
                 const existingError = document.querySelector('.error-message');
                 if (existingError) existingError.remove();
-                
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'error-message';
                 errorDiv.textContent = message;
-                
                 this.usernameSetup.appendChild(errorDiv);
-                
-                setTimeout(() => {
-                    if (errorDiv.parentNode) {
-                        errorDiv.remove();
-                    }
-                }, 5000);
+                setTimeout(() => errorDiv.remove(), 5000);
             }
         }
 
